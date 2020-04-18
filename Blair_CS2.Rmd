@@ -8,7 +8,7 @@ editor_options:
 ---
 
 ```{r}
-#install package and load library
+# #install package and load library
 # install.packages("stringr")
 # install.packages("dplyr")
 # install.packages("ggplot2")
@@ -18,6 +18,9 @@ editor_options:
 # install.packages("class")
 # install.packages("caret")
 # install.packages("e1071")
+# install.packages("GGally")
+# install.packages("Hmisc")
+#install.packages("corrplot")
 # 
 # library("stringr")
 # library("dplyr")
@@ -28,9 +31,37 @@ editor_options:
 # library(class)
 # library(caret)
 # library(e1071)
+# library(GGally)
+# library(Hmisc)
+# library(corrplot)
 
-fullData = read.csv(file.choose(), header=TRUE) #Select the location of the base data, provided as "CaseStudy2-data.csv"
+#fullData = read.csv(file.choose(), header=TRUE) #Select the location of the base data, provided as "CaseStudy2-data.csv"
+
+fullData <- read.csv("C:/Users/37828002/OD/@@Data Science/DS 6306 Doing Data Science/Case Study 2/CaseStudy2DDS/ProvidedData/CaseStudy2-data.csv", header=TRUE)
+
 ```
+
+```{r}
+###Function definitions
+
+
+# ++++++++++++++++++++++++++++
+# flattenCorrMatrix
+# Adopted from: http://www.sthda.com/english/wiki/correlation-matrix-formatting-and-visualization
+# ++++++++++++++++++++++++++++
+# cormat : matrix of the correlation coefficients
+# pmat : matrix of the correlation p-values
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+```
+
 
 ```{r}
 #Exploratory Data Analysis
@@ -46,9 +77,103 @@ numericData = fullData %>% select(ID, Attrition, Age, DailyRate, DistanceFromHom
 #Convert Attrition factor levels from string to numeric (1 = "No", 2 = "Yes")
 numericData$Attrition <- as.numeric(numericData$Attrition)
 
-correlationMatrix <- cor(numericData)
-round(correlationMatrix, 2)
+#Convert BusinessTravel from Factors ("Non-Travel", "Travel_Rarely", "Travel_Frequently") to numeric values in correct order (1 = Non-Travel, 2 = Travel_Rarely, 3 = Travel_Frequently)
+numericData$NumBusinnessTravel = as.numeric(factor(fullData$BusinessTravel, levels = c("Non-Travel", "Travel_Rarely", "Travel_Frequently")))
 
+#Create a dataset without ID numbers. ID numbers make the dataset more human readable, no ID numbers simplify later analysis
+noIDnumericData = subset(numericData, select = -c(ID))
+
+
+#Create a correlation matrix between all numeric variables and round them to 3 decimal places
+correlationMatrix <- cor(noIDnumericData)
+round(correlationMatrix, 3)
+
+
+
+
+#Excludes Attribution correlation with itself and displays a summary of correlations to Attribution
+#This allows us to quickly begin finding the range of highest and lowest correlation co-efficients
+correlationMatrix[2,2] = NA
+summary(correlationMatrix[,2])
+
+#Produces a correlation graph between all numeric variables
+#This allows us to see how all variables correlate to each other and specifically identify variables that strongly correlate to Attrition
+ggcorr(noIDnumericData, label = TRUE, label_round = 2)
+
+###Another form of correlation graph
+#Requires package: corrplot
+corrplot(correlationMatrix, type = "upper", order = "hclust")
+
+
+
+
+#Use to produce various graphs comparing specific variables
+#This allows us to take a more detailed look at how different variables relate to Attrition
+ggpairs(noIDnumericData, columns = c("Attrition", "JobInvolvement", "TotalWorkingYears"), upper = list(continuous = wrap("cor", size = 10)), lower = list(continuous = "smooth"))
+
+
+
+
+
+###Create a Correlation Matrix with Significance Levels (p-value)
+#Requires Hmisc package
+significantCorrelationMatrix <- rcorr(as.matrix(noIDnumericData))
+
+significantCorrelationMatrix$r
+summary(significantCorrelationMatrix$P)
+
+
+pvaluesSignificantCorrelationMatrix = significantCorrelationMatrix$P
+
+pvaluesSignificantCorrelationMatrix[,"Attrition"]
+pvaluesSignificantCorrelationMatrix["Attrition",]
+
+
+flattenedCorrelationMatrix <- flattenCorrMatrix(significantCorrelationMatrix$r, significantCorrelationMatrix$P)
+attritionFCM = flattenedCorrelationMatrix %>% filter(row == 'Attrition')
+orderedAttritionFCM <- attritionFCM[order(p),] ##this one doesn't work
+
+###Creates a correlogram combined with a significance test
+corrplot(significantCorrelationMatrix$r, type="upper", order="hclust", p.mat = significantCorrelationMatrix$P, sig.level = 0.01, insig = "blank")
+
+
+p = fullData %>% count(Attrition, Gender) %>% ggplot(aes(x = Attrition, y = Gender)) + geom_tile(mapping = aes(fill = n)) + geom_text(aes(label = n))
+
+
+p = fullData %>% count(Attrition, MaritalStatus) %>% ggplot(aes(x = Attrition, y = MaritalStatus)) + geom_tile(mapping = aes(fill = n)) + geom_text(aes(label = n))
+
+
+p = fullData %>% count(Attrition, Department) %>% ggplot(aes(x = Attrition, y = Department)) + geom_tile(mapping = aes(fill = n)) + geom_text(aes(label = n))
+
+
+p = fullData %>% count(Attrition, EducationField) %>% ggplot(aes(x = Attrition, y = EducationField)) + geom_tile(mapping = aes(fill = n)) + geom_text(aes(label = n))
+
+
+p = fullData %>% count(Attrition, JobRole) %>% ggplot(aes(x = Attrition, y = JobRole)) + geom_tile(mapping = aes(fill = n)) + geom_text(aes(label = n))
+
+ggplotly(p)
+
+
+##The following section displays the percentages of turnover by different factors: Gender, Marital Status, Department, Education Field, Job Role
+## To retrieve a specific percentage, query the prop table in the order of Row,Column
+### i.e.: p <- prop.table(table(fullData %>% select (Attrition, Gender)), 2)
+###       p['Yes', 'Female']
+###       => [1] 0.1497175
+
+#Summary of %Attrition of employees by Gender; Yes = employee turnover
+prop.table(table(fullData %>% select (Attrition, Gender)), 2)
+
+#Summary of %Attrition of employees by Marital Status; Yes = employee turnover
+prop.table(table(fullData %>% select (Attrition, MaritalStatus)), 2)
+
+#Summary of %Attrition of employees by Department; Yes = employee turnover
+prop.table(table(fullData %>% select (Attrition, Department)), 2)
+
+#Summary of %Attrition of employees by Education field; Yes = employee turnover
+prop.table(table(fullData %>% select (Attrition, EducationField)), 2)
+
+#Summary of %Attrition of employees by Job Role; Yes = employee turnover
+prop.table(table(fullData %>% select (Attrition, JobRole)), 2)
 
 
 
