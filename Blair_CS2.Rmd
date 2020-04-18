@@ -1,0 +1,56 @@
+---
+title: "CS2"
+author: "Nick Blair"
+date: "4/17/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#install package and load library
+# install.packages("stringr")
+# install.packages("dplyr")
+# install.packages("ggplot2")
+# install.packages("tidyverse")
+# install.packages("tidyr")
+# install.packages("plotly")
+# install.packages("class")
+# install.packages("caret")
+# install.packages("e1071")
+# 
+# library("stringr")
+# library("dplyr")
+# library("ggplot2")
+# library("tidyverse")
+# library("tidyr")
+# library("plotly")
+# library(class)
+# library(caret)
+# library(e1071)
+
+fullData = read.csv(file.choose(), header=TRUE) #Select the location of the base data, provided as "CaseStudy2-data.csv"
+```
+
+```{r}
+#Exploratory Data Analysis
+#Our main variable of interest is Attrition which tells us whether or not an employee suffered attrition (did not return to the company).
+#Specifically, we want to look for correlations between attrition and the other variables in the dataset.
+
+#Create a smaller data set that only includes numeric data
+#DailyRate, DistanceFromHome, Education, EnvironmentalSatisfaction, HourlyRate, JobInvolvement, JobLevel, JobSatisfaction, MonthlyRate, MonthlyIncome, NumCompaniesWorked, 
+#PercentSalaryHike, PerformanceRating, RelationshipSatisfaction, StockOptionLevel, TotalWorkingYears, TrainingTimesLastYear, WorkLifeBalance, YearsAtCompany, YearsInCurrentRole, 
+#YearsSinceLastPromotion, YearsWithCurrManager
+numericData = fullData %>% select(ID, Attrition, Age, DailyRate, DistanceFromHome, Education,EnvironmentSatisfaction, HourlyRate, JobInvolvement, JobLevel, JobSatisfaction, MonthlyRate, MonthlyIncome, NumCompaniesWorked,PercentSalaryHike, PerformanceRating, RelationshipSatisfaction, StockOptionLevel, TotalWorkingYears, TrainingTimesLastYear, WorkLifeBalance, YearsAtCompany, YearsInCurrentRole,YearsSinceLastPromotion, YearsWithCurrManager)
+
+#Convert Attrition factor levels from string to numeric (1 = "No", 2 = "Yes")
+numericData$Attrition <- as.numeric(numericData$Attrition)
+
+correlationMatrix <- cor(numericData)
+round(correlationMatrix, 2)
+
+
+
+
+
+```
