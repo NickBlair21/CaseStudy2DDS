@@ -7,4 +7,3 @@ The goal of the project is to understand the key factors that impact employee at
 
 Youtube presentation link: https://youtu.be/9SsTfrzQWe4
 
-https://nickblair21.github.io/
